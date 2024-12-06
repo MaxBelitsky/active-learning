@@ -4,9 +4,8 @@ import logging
 from datasets import load_dataset, concatenate_datasets
 import numpy as np
 from src.constants import DatasetName
-from utils import select_diverse_samples
+from src.utils import select_diverse_samples, calculate_uncertainty
 import torch
-from utils import calculate_uncertainty
 
 logger = logging.getLogger(__name__)
 
@@ -119,8 +118,8 @@ class FakeNewsDataset(Dataset):
                 query_indices = uncertain_indices[diverse_indices]
             return query_indices
         
-        
-def get_dataset(name, labeled_ratio=0.1):
+
+def get_dataset(name, labeled_ratio=0.1, processor=None):
     """
     Returns a dataset object based on the name provided and creates a new training subset
     that keeps only a fraction of the labeled data.
@@ -132,9 +131,10 @@ def get_dataset(name, labeled_ratio=0.1):
     Returns:
         Dataset: dataset object
     """
-    if name == DatasetName.cifar10:
+
+    if name == DatasetName.cifar10.value:
         return Cifar10(labeled_ratio)
-    elif name == DatasetName.fake_news:
-        return FakeNewsDataset(labeled_ratio)
+    elif name == DatasetName.fake_news.value:
+        return FakeNewsDataset(labeled_ratio, processor=processor)
     else:
         raise ValueError(f'Dataset {name} not supported. The supported datasets are: {DatasetName.values()}')

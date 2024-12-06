@@ -1,5 +1,5 @@
 import torch
-
+from eval import evaluate
 
 def train(model, optimizer, criterion, dataset, training_args, active_learning_args, epsilon):
     """
@@ -20,8 +20,9 @@ def train(model, optimizer, criterion, dataset, training_args, active_learning_a
     num_iterations = active_learning_args['num_iterations']
     query_strategy = active_learning_args['query_strategy']
     query_budget = active_learning_args['query_budget']
-    use_diversity = active_learning_args.get('use_diversity', True)
     
+    val_results = []
+
     for iteration in range(num_iterations):
 
         train_loader = torch.utils.data.DataLoader(dataset.labeled, batch_size=training_args['batch_size'], shuffle=True)
@@ -34,7 +35,14 @@ def train(model, optimizer, criterion, dataset, training_args, active_learning_a
                 loss = criterion(outputs, labels)
                 loss.backward()
                 optimizer.step()
-        
+
+        # Evaluate the model
+        # Evaluate the model
+        test_loader = torch.utils.data.DataLoader(dataset['test'], batch_size=training_args['batch_size'], shuffle=False)
+        results = evaluate(model, test_loader)
+        print(f'Iteration {iteration}: {results}')
+        val_results.append(results)
+
         query_indices = dataset.select_samples(query_strategy, model, query_budget)
         # Select samples to query from the dataset using the query strategy
         dataset.move_samples(query_indices)

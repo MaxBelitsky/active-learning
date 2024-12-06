@@ -10,3 +10,4 @@ class ExtendedEnum(Enum):
 
 class DatasetName(ExtendedEnum):
     cifar10 = "cifar10"
+    fake_news = "fake_news"

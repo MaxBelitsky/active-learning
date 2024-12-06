@@ -45,7 +45,7 @@ if __name__ == '__main__':
     logger.info(f'Loading dataset {args.dataset} with labeled ratio {args.labeled_ratio}')
     dataset = get_dataset(args.dataset, args.labeled_ratio, processor=processor)
 
-    optimizer = torch.optim.Adam(model.parameters())
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-5)
     criterion = torch.nn.CrossEntropyLoss()
 
     # Train the model

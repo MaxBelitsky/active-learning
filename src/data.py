@@ -49,6 +49,7 @@ class FakeNewsDataset(Dataset):
         self.labeled_ratio = labeled_ratio
         self.processor = processor
         self.load_data()
+        self.preprocess_data()
 
     def load_data(self):
         logger.info('Loading Mirage news data...')
@@ -57,16 +58,16 @@ class FakeNewsDataset(Dataset):
     def transform(self, example_batch):
         # Take a list of PIL images and turn them to pixel values
         inputs = self.processor([x for x in example_batch['image']], return_tensors='pt')
-
+        
         # Don't forget to include the labels!
-        inputs['labels'] = example_batch['labels']
+        inputs['label'] = example_batch['label']
         return inputs
 
     def preprocess_data(self):
         self.data = self.data.with_transform(self.transform)
         self.train = self.data['train']
-        self.test = self.data['test']
-
+        self.test = self.data['validation']
+        
         # Select labeled_ratio of the data to be labeled
         n_labeled_examples = int(len(self.train) * self.labeled_ratio)
         ids_labeled = range(n_labeled_examples)

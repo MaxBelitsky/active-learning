@@ -1,5 +1,7 @@
 import torch
 from src.eval import evaluate
+from torch.utils.data import DataLoader
+
 
 def train(model, optimizer, criterion, dataset, args, epsilon):
     """
@@ -17,34 +19,35 @@ def train(model, optimizer, criterion, dataset, args, epsilon):
     """
 
     # Initialize active learning loop
-    num_iterations = args['num_iterations']
-    query_strategy = args['query_strategy']
-    query_budget = args['query_budget']
+    num_iterations = args.num_iterations
+    query_strategy = args.query_strategy
+    query_budget = args.query_budget
     
     val_results = []
 
     for iteration in range(num_iterations):
 
-        train_loader = torch.utils.data.DataLoader(dataset.labeled, batch_size=args['batch_size'], shuffle=True)
+        train_loader = DataLoader(dataset.labeled, batch_size=args.batch_size, shuffle=True)
         
-        for epoch in range(args['num_epochs']):
+        for epoch in range(args.num_epochs):
             for batch in train_loader:
-                inputs, labels = batch
+                inputs = batch["pixel_values"]
+                labels = batch["label"]
                 optimizer.zero_grad()
                 outputs = model(inputs)
-                loss = criterion(outputs, labels)
+                loss = criterion(outputs.logits, labels)
                 loss.backward()
                 optimizer.step()
-
+                
         # Evaluate the model
-        test_loader = torch.utils.data.DataLoader(dataset['test'], batch_size=args['batch_size'], shuffle=False)
+        test_loader = DataLoader(dataset.test, batch_size=args.batch_size, shuffle=False)
         results = evaluate(model, test_loader)
         print(f'Iteration {iteration}: {results}')
         val_results.append(results)
         if results['accuracy'] > epsilon:
             break
         
-        torch.save(model.state_dict(), f'saves/model_{iteration}.pt')
+        #torch.save(model.state_dict(), f'saves/model_{iteration}.pt') # TODO: set correct path
 
         query_indices = dataset.select_samples(query_strategy, model, query_budget)
         # Select samples to query from the dataset using the query strategy

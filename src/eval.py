@@ -23,23 +23,23 @@ def evaluate(model, data_loader):
 
     with torch.no_grad():  # Disable gradient computation for evaluation
         for batch in data_loader:
-            inputs, labels = batch
-            inputs, labels = inputs.to(device), labels.to(device)
+            inputs = batch["pixel_values"].to(device)
+            labels = batch["label"].to(device)
 
             # Forward pass
             outputs = model(inputs)
 
             # Compute loss
-            loss = criterion(outputs, labels)
+            loss = criterion(outputs.logits, labels)
             total_loss += loss.item()
 
             # Get predictions
-            _, predictions = torch.max(outputs, dim=1)
+            _, predictions = torch.max(outputs.logits, dim=1)
 
             # Accumulate predictions and labels
             all_predictions.extend(predictions.cpu().numpy())
             all_labels.extend(labels.cpu().numpy())
-
+            
     # Compute metrics
     accuracy = accuracy_score(all_labels, all_predictions)
     avg_loss = total_loss / len(data_loader)

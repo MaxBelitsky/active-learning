@@ -1,9 +1,12 @@
 from abc import ABC, abstractmethod
 import logging
 
-from datasets import load_dataset
+from datasets import load_dataset, concatenate_datasets
 import numpy as np
 from src.constants import DatasetName
+from utils import select_diverse_samples
+import torch
+from utils import calculate_uncertainty
 
 logger = logging.getLogger(__name__)
 
@@ -76,16 +79,47 @@ class FakeNewsDataset(Dataset):
         moved_samples = self.unlabeled.select(indices)
         self.unlabeled = self.unlabeled.select(np.setdiff1d(range(len(self.unlabeled)), indices))
         # Concatenate the moved samples to the labeled set
-        self.labeled = self.labeled.concatenate(moved_samples) # TODO: check if this works
+        self.labeled = concatenate_datasets([self.labeled, moved_samples]) # TODO: check if this works
 
     def select_samples(self, strategy, model, budget):
         if strategy == 'random':
             ids = np.random.randint(0, len(self.unlabeled), budget)
             return ids
+        elif strategy in ['uncertainty_diverse', 'uncertainty']:
+            model.eval()
+            with torch.no_grad():
+                # Compute embeddings and class probabilities for unlabeled data
+                embeddings = []
+                probabilities = []
+                unlabeled_loader = torch.utils.data.DataLoader(
+                    self.unlabeled, batch_size=32
+                )
+                for batch in unlabeled_loader:
+                    inputs = batch[0].to(model.device)
+                    outputs = model(inputs)
+                    probs = torch.softmax(outputs, dim=1).cpu().numpy()
+                    embeddings.append(model.get_embeddings(inputs).cpu().numpy())  # Replace with your embedding extraction
+                    probabilities.append(probs)
+
+                embeddings = np.vstack(embeddings)
+                probabilities = np.vstack(probabilities)
+
+            # Calculate uncertainty
+            uncertainties = calculate_uncertainty(probabilities)
+
+            if strategy == 'uncertainty':
+                query_indices = np.argsort(-uncertainties)[:budget]
+            else:
+                # Select top uncertain samples
+                uncertain_indices = np.argsort(-uncertainties)[:budget*10]
+                
+                # Refine with diversity measure
+                selected_embeddings = embeddings[uncertain_indices]
+                diverse_indices = select_diverse_samples(selected_embeddings, budget)
+                query_indices = uncertain_indices[diverse_indices]
+            return query_indices
         
         
-
-
 def get_dataset(name, labeled_ratio=0.1):
     """
     Returns a dataset object based on the name provided and creates a new training subset

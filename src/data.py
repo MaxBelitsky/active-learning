@@ -57,8 +57,11 @@ class FakeNewsDataset(Dataset):
 
     def transform(self, example_batch):
         # Take a list of PIL images and turn them to pixel values
-        inputs = self.processor([x for x in example_batch['image']], return_tensors='pt')
-        
+        try:
+            inputs = self.processor([img for img in example_batch["image"] if img.mode == "RGB"], return_tensors='pt')
+        except:
+            print(example_batch)
+
         # Don't forget to include the labels!
         inputs['label'] = example_batch['label']
         return inputs

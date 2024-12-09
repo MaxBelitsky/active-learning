@@ -1,7 +1,7 @@
 import torch
 from src.eval import evaluate
 from torch.utils.data import DataLoader
-
+from tqdm import tqdm
 
 def train(model, optimizer, criterion, dataset, args, epsilon):
     """
@@ -28,16 +28,15 @@ def train(model, optimizer, criterion, dataset, args, epsilon):
     for iteration in range(num_iterations):
 
         train_loader = DataLoader(dataset.labeled, batch_size=args.batch_size, shuffle=True)
-        
-        for epoch in range(args.num_epochs):
-            for batch in train_loader:
-                inputs = batch["pixel_values"]
-                labels = batch["label"]
-                optimizer.zero_grad()
-                outputs = model(inputs)
-                loss = criterion(outputs.logits, labels)
-                loss.backward()
-                optimizer.step()
+        # for epoch in tqdm(range(args.num_epochs)):
+        #     for batch in train_loader:
+        #         inputs = batch["pixel_values"]
+        #         labels = batch["label"]
+        #         optimizer.zero_grad()
+        #         outputs = model(inputs)
+        #         loss = criterion(outputs.logits, labels)
+        #         loss.backward()
+        #         optimizer.step()
                 
         # Evaluate the model
         test_loader = DataLoader(dataset.test, batch_size=args.batch_size, shuffle=False)

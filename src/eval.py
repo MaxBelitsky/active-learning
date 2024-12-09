@@ -1,6 +1,6 @@
 import torch
 from sklearn.metrics import accuracy_score
-
+from tqdm import tqdm
 
 def evaluate(model, data_loader):
     """
@@ -22,7 +22,7 @@ def evaluate(model, data_loader):
     criterion = torch.nn.CrossEntropyLoss()  # Loss function for evaluation
 
     with torch.no_grad():  # Disable gradient computation for evaluation
-        for batch in data_loader:
+        for batch in tqdm(data_loader):
             inputs = batch["pixel_values"].to(device)
             labels = batch["label"].to(device)
 

@@ -2,8 +2,40 @@ import torch
 from src.eval import evaluate
 from torch.utils.data import DataLoader
 from tqdm import tqdm
+from torch.utils.tensorboard import SummaryWriter
+from datetime import datetime
+ 
 
-def train(model, optimizer, criterion, dataset, args, epsilon):
+def train_cycle(model, optimizer, scheduler, criterion, dataset, args, iteration, writer=None):
+    model.train()
+    train_loss = []
+    train_loader = DataLoader(dataset.labeled, batch_size=args.batch_size, shuffle=True)
+    print(len(train_loader))
+
+    for epoch in tqdm(range(args.num_epochs)):
+        train_loss_epoch = []
+        iter = 0
+        for batch in train_loader:
+            inputs = batch["pixel_values"].to(args.device)
+            labels = batch["label"].to(args.device)
+            optimizer.zero_grad()
+            outputs = model(inputs)
+            loss = criterion(outputs.logits, labels)
+            loss.backward()
+            torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+            optimizer.step()
+            scheduler.step()
+            train_loss_epoch.append(loss.item()) 
+            if writer:
+                writer.add_scalar("Train Loss", loss.item(), iteration*args.num_epochs + epoch + iter/len(train_loader))
+            iter += 1
+        train_loss.append(sum(train_loss_epoch)/len(train_loss_epoch))
+        print(scheduler.get_last_lr())
+        print(f'Epoch {epoch}: {train_loss[-1]}')  
+    
+    return train_loss 
+
+def train(model, optimizer, scheduler, criterion, dataset, args, epsilon):
     """
     Train the model on the dataset. This function should implement the active learning loop.
     the model and dataset ar huggingface 
@@ -23,33 +55,39 @@ def train(model, optimizer, criterion, dataset, args, epsilon):
     query_strategy = args.query_strategy
     query_budget = args.query_budget
     
+
+    # get current date and time
+    now = datetime.now().strftime("%Y%m%d-%H%M%S")
+    writer = SummaryWriter(log_dir=f"{args.log_dir}/{query_strategy}-{now}")  # Create a SummaryWriter for logging
+
     val_results = []
+    train_loss = []
 
-    for iteration in range(num_iterations):
+    # fist train the model on the labeled data
+    train_cycle(model, optimizer, scheduler, criterion, dataset, args, 0, writer=writer)
 
-        train_loader = DataLoader(dataset.labeled, batch_size=args.batch_size, shuffle=True)
-        # for epoch in tqdm(range(args.num_epochs)):
-        #     for batch in train_loader:
-        #         inputs = batch["pixel_values"]
-        #         labels = batch["label"]
-        #         optimizer.zero_grad()
-        #         outputs = model(inputs)
-        #         loss = criterion(outputs.logits, labels)
-        #         loss.backward()
-        #         optimizer.step()
-                
+    # Then do AL
+    for iteration in range(1, num_iterations+1):
+        query_indices = dataset.select_samples(query_strategy, model, query_budget)
+        # Select samples to query from the dataset using the query strategy
+        dataset.move_samples(query_indices)
+        
+        train_loss.extend(
+            train_cycle(model, optimizer, scheduler, criterion, dataset, args, iteration, writer=writer)
+        )
+        
         # Evaluate the model
         test_loader = DataLoader(dataset.test, batch_size=args.batch_size, shuffle=False)
         results = evaluate(model, test_loader)
         print(f'Iteration {iteration}: {results}')
         val_results.append(results)
+        writer.add_scalar("Accuracy", results['accuracy'], iteration)
+        writer.add_scalar("Val Loss", results['loss'], iteration)
+
         if results['accuracy'] > epsilon:
             break
         
         #torch.save(model.state_dict(), f'saves/model_{iteration}.pt') # TODO: set correct path
 
-        query_indices = dataset.select_samples(query_strategy, model, query_budget)
-        # Select samples to query from the dataset using the query strategy
-        dataset.move_samples(query_indices)
-
+    writer.close()
     return model

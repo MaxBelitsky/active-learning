@@ -11,3 +11,8 @@ class ExtendedEnum(Enum):
 class DatasetName(ExtendedEnum):
     cifar10 = "cifar10"
     fake_news = "fake_news"
+
+class QueryStrategy(ExtendedEnum):
+    random = "random"
+    uncertainty = "uncertainty"
+    uncertainty_diverse = "uncertainty_diverse"

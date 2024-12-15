@@ -27,10 +27,8 @@ def evaluate(model, data_loader, head_only=False):
         for batch in tqdm(data_loader):
             if head_only:
                 inputs = batch["embeddings"].to(device)
-                print("Happens")
             else:
                 inputs = batch["pixel_values"].to(device)
-                print("Happens 2")
             labels = batch["label"].to(device)
 
             # Forward pass

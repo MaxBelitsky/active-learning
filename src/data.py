@@ -87,13 +87,17 @@ class FakeNewsDataset(Dataset):
 
     def move_samples(self, indices):
         moved_samples = self.unlabeled.select(indices)
+        
         # Flip labels if needed
         if self.incorrect_labels_ratio > 0:
             moved_samples = moved_samples.map(lambda example: self.flip_labels(example, flip_ratio=self.incorrect_labels_ratio))
 
+        moved_samples.set_transform(self.transform)
         self.unlabeled = self.unlabeled.select(np.setdiff1d(range(len(self.unlabeled)), indices))
         # Concatenate the moved samples to the labeled set
         self.labeled = concatenate_datasets([self.labeled, moved_samples])
+        self.labeled.set_transform(self.transform)
+
 
     def flip_labels(self, example, flip_ratio=0.3):
         if random.random() < flip_ratio:  # with `flip_ratio` chance

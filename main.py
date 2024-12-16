@@ -33,7 +33,7 @@ if __name__ == '__main__':
     parser.add_argument('--lr', type=float, default=1e-4, help='Learning rate')
     parser.add_argument('--log_dir', type=str, default='logs', help='Directory to save logs')
     parser.add_argument('--n_runs', type=int, default=1, help='Number of runs')
-    parser.add_argument('--train_head_only', default=True, action=BooleanOptionalAction, help='Train only the head of the model')
+    parser.add_argument('--train_head_only', default=False, action=BooleanOptionalAction, help='Train only the head of the model')
 
     # Active learning args
     parser.add_argument('--labeled_ratio', type=float, default=0.1, help='Fraction of labeled data to keep')
@@ -57,26 +57,26 @@ if __name__ == '__main__':
 
     processor = AutoImageProcessor.from_pretrained(args.model)
 
-    # Load the dataset
-    logger.info(f'Loading dataset {args.dataset} with labeled ratio {args.labeled_ratio}')
-    dataset = get_dataset(args.dataset, args.labeled_ratio, args.incorrect_labels_ratio, processor=processor)
-    logger.info(f"Number of labeled examples: {len(dataset.labeled)}")
+    # # Load the dataset
+    # logger.info(f'Loading dataset {args.dataset} with labeled ratio {args.labeled_ratio}')
+    # dataset = get_dataset(args.dataset, args.labeled_ratio, args.incorrect_labels_ratio, processor=processor)
+    # logger.info(f"Number of labeled examples: {len(dataset.labeled)}")
 
-    labels = dataset.train.features['label'].names
-    logger.info(f"Label names: {labels}")
+    # labels = dataset.train.features['label'].names
+    # logger.info(f"Label names: {labels}")
 
-    # Load the model
-    logger.info(f'Loading model {args.model}')
-    model = AutoModelForImageClassification.from_pretrained(
-        args.model, num_labels=len(labels), ignore_mismatched_sizes=True
-    ).to(args.device)
+    # # Load the model
+    # logger.info(f'Loading model {args.model}')
+    # model = AutoModelForImageClassification.from_pretrained(
+    #     args.model, num_labels=len(labels), ignore_mismatched_sizes=True
+    # ).to(args.device)
 
-    if args.train_head_only:
-        # Pass the dataset through the model to get the representation
-        dataset.extract_features(model, args.batch_size)
+    # if args.train_head_only:
+    #     # Pass the dataset through the model to get the representation
+    #     dataset.extract_features(model, args.batch_size)
 
-        # Train only the classifier head
-        model = model.classifier
+    #     # Train only the classifier head
+    #     model = model.classifier
 
     all_results = []
     for run_idx in range(args.n_runs):
@@ -90,6 +90,14 @@ if __name__ == '__main__':
         np.random.seed(args.seed)
         random.seed(args.seed)
         np.random.seed(args.seed)
+
+        # Load the dataset
+        logger.info(f'Loading dataset {args.dataset} with labeled ratio {args.labeled_ratio}')
+        dataset = get_dataset(args.dataset, args.labeled_ratio, args.incorrect_labels_ratio, processor=processor)
+        logger.info(f"Number of labeled examples: {len(dataset.labeled)}")
+
+        labels = dataset.train.features['label'].names
+        logger.info(f"Label names: {labels}")
 
         # Reinintialize the model with new seed
         model = AutoModelForImageClassification.from_pretrained(

@@ -4,14 +4,14 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 from torch.utils.tensorboard import SummaryWriter
 from datetime import datetime
+import jsonlines
 
 
 def train_cycle(model, optimizer, scheduler, criterion, dataset, args, iteration, writer=None, train_head_only=False):
     model.train()
     train_loss = []
     train_loader = DataLoader(dataset.labeled, batch_size=args.batch_size, shuffle=True)
-    print(len(train_loader))
-
+    
     for epoch in tqdm(range(args.num_epochs)):
         train_loss_epoch = []
         iter = 0
@@ -65,7 +65,7 @@ def train(model, optimizer, scheduler, criterion, dataset, args, epsilon, train_
 
     # get current date and time
     now = datetime.now().strftime("%Y%m%d-%H%M%S")
-    writer = SummaryWriter(log_dir=f"{args.log_dir}/{query_strategy}-{now}")  # Create a SummaryWriter for logging
+    writer = SummaryWriter(log_dir=f"{args.log_dir}/{query_strategy}-seed_{args.seed}-{now}")  # Create a SummaryWriter for logging
 
     val_results = []
     train_loss = []
@@ -101,5 +101,9 @@ def train(model, optimizer, scheduler, criterion, dataset, args, epsilon, train_
         
         #torch.save(model.state_dict(), f'saves/model_{iteration}.pt') # TODO: set correct path
 
+    with jsonlines.open(f'output/val_results_seed_-{query_strategy}-rat_{str(args.incorrect_labels_ratio).replace(".", "")}-{args.seed}-{now}.jsonl', mode='w') as writer:
+        for item in val_results:
+            writer.write(item)
+    
     writer.close()
     return model

@@ -37,7 +37,7 @@ def evaluate(model, data_loader, head_only=False):
             if head_only:
                 logits = outputs[:, 0, :]
             else:
-                outputs = outputs.logits
+                logits = outputs.logits
 
             # Compute loss
             loss = criterion(logits, labels)

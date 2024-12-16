@@ -79,11 +79,12 @@ if __name__ == '__main__':
     #     model = model.classifier
 
     all_results = []
+    seed = None 
     for run_idx in range(args.n_runs):
 
-        args.seed = args.seed + run_idx
+        #args.seed = args.seed + run_idx
         logger.info(f"Run {run_idx+1}/{args.n_runs} with seed {args.seed}")
-
+    
         # Set seeds for reproducibility
         torch.manual_seed(args.seed)
         torch.cuda.manual_seed(args.seed)
@@ -121,7 +122,8 @@ if __name__ == '__main__':
         results = evaluate(model, test_loader, head_only=args.train_head_only)
 
         all_results.append(results)
-
+        args.seed += 1
+        
     # Save the results
     logger.info('Saving the results...')
     save_results(all_results, args)

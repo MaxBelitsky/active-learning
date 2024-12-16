@@ -94,6 +94,7 @@ class FakeNewsDataset(Dataset):
 
         moved_samples.set_transform(self.transform)
         self.unlabeled = self.unlabeled.select(np.setdiff1d(range(len(self.unlabeled)), indices))
+    
         # Concatenate the moved samples to the labeled set
         self.labeled = concatenate_datasets([self.labeled, moved_samples])
         self.labeled.set_transform(self.transform)
@@ -114,14 +115,16 @@ class FakeNewsDataset(Dataset):
                 # Compute embeddings and class probabilities for unlabeled data
                 embeddings = []
                 probabilities = []
+                picked_batch_idxs = np.random.randint(0, len(self.unlabeled), 1000)
                 unlabeled_loader = torch.utils.data.DataLoader(
-                    self.unlabeled, batch_size=32
+                    self.unlabeled.select(picked_batch_idxs),
+                    batch_size=64
                 )
                 for batch in unlabeled_loader:
-                    inputs = batch[0].to(model.device)
+                    inputs = batch['pixel_values'].to(model.device)
                     outputs = model(inputs)
-                    probs = torch.softmax(outputs, dim=1).cpu().numpy()
-                    embeddings.append(model.get_embeddings(inputs).cpu().numpy())  # Replace with your embedding extraction
+                    probs = torch.softmax(outputs.logits, dim=1).cpu().numpy()
+                    embeddings.append(model.vit(inputs).last_hidden_state[:, 0, :].detach().cpu().numpy())  # Replace with your embedding extraction
                     probabilities.append(probs)
 
                 embeddings = np.vstack(embeddings)
@@ -134,12 +137,14 @@ class FakeNewsDataset(Dataset):
                 query_indices = np.argsort(-uncertainties)[:budget]
             else:
                 # Select top uncertain samples
-                uncertain_indices = np.argsort(-uncertainties)[:budget*10]
+                uncertain_indices = np.argsort(-uncertainties)[:budget*5]
 
                 # Refine with diversity measure
                 selected_embeddings = embeddings[uncertain_indices]
                 diverse_indices = select_diverse_samples(selected_embeddings, budget)
                 query_indices = uncertain_indices[diverse_indices]
+            
+            query_indices = picked_batch_idxs[query_indices]
             return query_indices
 
     def _extract_features(self, example, model):

@@ -71,7 +71,7 @@ def train(model, optimizer, scheduler, criterion, dataset, args, epsilon, train_
     train_loss = []
 
     # fist train the model on the labeled data
-    train_cycle(model, optimizer, scheduler, criterion, dataset, args, 0, writer=writer, train_head_only=train_head_only)
+    #train_cycle(model, optimizer, scheduler, criterion, dataset, args, 0, writer=writer, train_head_only=train_head_only)
 
     if dataset.labeled_ratio == 1:
         # If we have all the data labeled, we can just train the model and return it
